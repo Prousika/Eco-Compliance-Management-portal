@@ -1,144 +1,214 @@
-import { FaFile } from "react-icons/fa"
-import Header from "./Header"
-const INITAIL_DATA=[
-  {
-    Date:"29-9-25",
-    Type:"Pothole",
-    Status:"Ongoing",
-    Progress:"75%"
-  },
-  {
-    Date:"29-9-25",
-    Type:"Pothole",
-    Status:"Ongoing",
-    Progress:"75%"
-  }
-]
-const Checkstatus=()=>{
-    return(
+import Header from "./Header";
+import {
+  FaChevronRight,
+  FaRegFileAlt,
+  FaRegImage,
+  FaSearch,
+} from "react-icons/fa";
+import { useEffect, useMemo, useState } from "react";
+import { getReports } from "../utils/reportStore";
+import "./Checkstatus.css";
+
+const Checkstatus = () => {
+  const [reports, setReports] = useState(() => getReports());
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedReportNumber, setSelectedReportNumber] = useState(
+    reports[0]?.reportNumber || ""
+  );
+
+  useEffect(() => {
+    const syncReports = () => setReports(getReports());
+    syncReports();
+    window.addEventListener("eco-reports-changed", syncReports);
+    window.addEventListener("storage", syncReports);
+    return () => {
+      window.removeEventListener("eco-reports-changed", syncReports);
+      window.removeEventListener("storage", syncReports);
+    };
+  }, []);
+
+  const filteredReports = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return reports;
+    }
+
+    return reports.filter((report) =>
+      report.reportNumber.toLowerCase().includes(normalizedQuery)
+    );
+  }, [searchQuery]);
+
+  const selectedReport =
+    reports.find((report) => report.reportNumber === selectedReportNumber) ||
+    filteredReports[0] ||
+    reports[0] ||
+    null;
+
+  return (
     <>
-    <Header/>
-    <div className="checkstatus">
-        <div className="checkstatus-cnt">
-            <div className="filter-action-ctn">
-                <h3>Filter & Action</h3>
-                <div className="sumbit-newreport-btn">
-                  <button>+   Submit New Report</button>
-                </div>
-                <div className="filter-input">
-                    <input type="text" />
-                </div>
-                <div className="filterby-status">
-                    <h3>Status</h3>
-                  <div className="status-ongoing">
-                    <span>🟡Ongoing</span>
-                    </div>
-                  <div className="status-completed">
-                   <span> 🟢Completed</span>
-                   </div>
-                  <div className="status-pending">
-                    <span>🔴Pending</span>
-                    </div>
-                </div>
+      <Header />
+      <div className="check-status-page">
+        <div className="check-status-shell">
+          <div className="check-status-browser">
+            <span />
+            <span />
+            <span />
+          </div>
+
+          <section className="check-status-panel">
+            <div className="check-status-title">
+              <h1>
+                <FaRegFileAlt />
+                Report Status Dashboard
+              </h1>
+              <p>Track progress and details of your report</p>
             </div>
-        </div>
-        <section className="recent-report">
-          <div className="recent-report-ctn">
-              <h2>Your Recent Report </h2>
-              <div className="abt-recent-report">
-                <p>Track progress and details of your report </p>
-              </div>
-              <div className="data-recent-report">
-                <table className="Table-ctn">
-                  <thead className="table-hdr">
-                    <tr className="hdr-tr">
+
+            <div className="check-status-search">
+              <input
+                type="text"
+                placeholder="Enter Report Number (e.g. RPT-89011)"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+              <button type="button" aria-label="Search report number">
+                <FaSearch />
+                Search
+              </button>
+            </div>
+
+            <div className="check-status-card">
+              <h2>Your Recent Reports</h2>
+              <div className="check-status-table-wrap">
+                <table className="check-status-table">
+                  <thead>
+                    <tr>
+                      <th>Report No.</th>
                       <th>Date</th>
                       <th>Type</th>
                       <th>Status</th>
                       <th>Progress</th>
+                      <th>Progress</th>
                       <th>Action</th>
                     </tr>
                   </thead>
-                  <tbody className="table-data">
-                    {INITAIL_DATA.map((el,index)=>{
-                    return(
-                    <tr className="data-tr">
-                      <td className="date-data">{el.Date}</td>
-                      <td className="typeof-data">{el.Type}</td>
-                      <td className="status-data"><div className="status-data-clr">{el.Status}</div></td>
-                      <td className="progress-data"><div className="progress-data-clr">{el.Progress}</div></td>
-                      <td className="action-data"><button className="action-data-btn">View</button></td>
-                    </tr>)})}
+                  <tbody>
+                    {filteredReports.map((report) => (
+                      <tr key={`${report.date}-${report.type}`}>
+                        <td>{report.reportNumber}</td>
+                        <td>{report.date}</td>
+                        <td>{report.type}</td>
+                        <td>
+                          <span className={`pill pill-${report.tone}`}>
+                            {report.status}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`pill pill-${report.tone}`}>
+                            {report.progress}%
+                          </span>
+                        </td>
+                        <td>
+                          <div className="row-progress">
+                            <span style={{ width: `${report.progress}%` }} />
+                          </div>
+                          <FaChevronRight />
+                        </td>
+                        <td className="view-cell">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelectedReportNumber(report.reportNumber)
+                            }
+                          >
+                            View
+                            <FaChevronRight />
+                          </button>
+                          <FaChevronRight />
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
+                {!filteredReports.length && (
+                  <p className="empty-results">
+                    No reports found for "{searchQuery}".
+                  </p>
+                )}
               </div>
-          </div>
-        </section>
-        <section className="checkstatus-details">
-          <div className="details-ctn">
-            <div className="details-hdr">
-              <h4>Summary</h4>
-              <h4>Feedback</h4>
             </div>
-            <div className="details-data">
-             <div className="report-details-num">
-               <span><FaFile/>Report Details:</span>
-             </div>
-             <div className="status-rpt">
-              <span>Status:</span>
-             </div>
-             <div className="details-summary">
-              <h3>Summary</h3>
-              <div className="summary-data">
-                <div className="summary-date">
-               <span>Date:</span>
-               </div>
-               <div className="summary-type">
-              <span>Type:</span>
-               </div>
-               <div className="summary-loc">
-                <span>Location:</span>
-               </div>
-               <div className="summary-ass-name">
-                <span>Assigned Worker:</span>
-               </div>
-               <div className="summary-contact">
-              <span>Contact:</span>
-               </div>
-              </div>
-             </div>
-             <div className="details-tracker">
-                 <div className="details-trk-hdr">
-                  <h3>Update</h3>
-                 </div>
-                 <div className="details-updt">
-                    <h4>30-10-25</h4>
-                    <span>.Worker Alllocated</span>
-                 </div>
-             </div>
-              <div className="details-description">
-               <div className="description-hdr">
-                <h3>Description</h3>
-               </div>
-               <div className="description-content">
-                <p>Pothole Found Near School Need Immediate Action</p>
-               </div>
-              </div>
-              <div className="details-attachment">
-                <div className="attachment-hdr">
-                  <h3>Attachments</h3>
+
+            {selectedReport ? (
+              <div className="check-status-card">
+                <h2>Report Details: {selectedReport.reportNumber}</h2>
+
+                <div className="details-grid">
+                  <div className="details-main">
+                    <table className="detail-summary-table">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Type</th>
+                          <th>Location</th>
+                          <th>Assigned Worker</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>{selectedReport.date}</td>
+                          <td>{selectedReport.type}</td>
+                          <td>{selectedReport.location}</td>
+                          <td>{selectedReport.department || selectedReport.assignedWorker}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                    <div className="detail-inline-stats">
+                      <span className={`pill pill-${selectedReport.tone}`}>
+                        {selectedReport.status}
+                      </span>
+                      <span className={`pill pill-${selectedReport.tone}`}>
+                        {selectedReport.progress}%
+                      </span>
+                    </div>
+
+                    <div className="detail-description">
+                      <h3>Description</h3>
+                      <p>{selectedReport.description}</p>
+                    </div>
+                  </div>
+
+                  <aside className="details-side">
+                    <h3>Updates Timeline</h3>
+                    <ul>
+                      {selectedReport.timeline.map((item) => (
+                        <li key={`${item.date}-${item.text}`}>
+                          <span>{item.date}</span>
+                          <p>{item.text}</p>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <div className="detail-attachments">
+                      {selectedReport.images.map((item) => (
+                        <figure key={item.name}>
+                          <img src={item.src} alt={item.name} />
+                          <figcaption>
+                            <FaRegImage />
+                            {item.name}
+                          </figcaption>
+                        </figure>
+                      ))}
+                    </div>
+                  </aside>
                 </div>
-              <div className="attachment-pic"> 
-                
               </div>
-              </div>
-            </div>
-          </div>
-
-        </section>
-    </div>
+            ) : null}
+          </section>
+        </div>
+      </div>
     </>
+  );
+};
 
-    )
-}
 export default Checkstatus;
