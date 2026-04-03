@@ -6,24 +6,30 @@ import {
   FaSearch,
 } from "react-icons/fa";
 import { useEffect, useMemo, useState } from "react";
-import { getReports } from "../utils/reportStore";
+import { getMyReports } from "../utils/reportStore";
 import "./Checkstatus.css";
 
 const Checkstatus = () => {
-  const [reports, setReports] = useState(() => getReports());
+  const [reports, setReports] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedReportNumber, setSelectedReportNumber] = useState(
-    reports[0]?.reportNumber || ""
-  );
+  const [selectedReportNumber, setSelectedReportNumber] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const syncReports = () => setReports(getReports());
+    const syncReports = async () => {
+      try {
+        const nextReports = await getMyReports();
+        setReports(nextReports);
+        setError("");
+      } catch (err) {
+        setError(err.message || "Unable to load reports.");
+      }
+    };
+
     syncReports();
     window.addEventListener("eco-reports-changed", syncReports);
-    window.addEventListener("storage", syncReports);
     return () => {
       window.removeEventListener("eco-reports-changed", syncReports);
-      window.removeEventListener("storage", syncReports);
     };
   }, []);
 
@@ -36,12 +42,20 @@ const Checkstatus = () => {
     return reports.filter((report) =>
       report.reportNumber.toLowerCase().includes(normalizedQuery)
     );
-  }, [searchQuery]);
+  }, [reports, searchQuery]);
+
+  useEffect(() => {
+    setSelectedReportNumber((current) => {
+      if (current && filteredReports.some((report) => report.reportNumber === current)) {
+        return current;
+      }
+      return filteredReports[0]?.reportNumber || "";
+    });
+  }, [filteredReports]);
 
   const selectedReport =
-    reports.find((report) => report.reportNumber === selectedReportNumber) ||
+    filteredReports.find((report) => report.reportNumber === selectedReportNumber) ||
     filteredReports[0] ||
-    reports[0] ||
     null;
 
   return (
@@ -76,6 +90,7 @@ const Checkstatus = () => {
                 Search
               </button>
             </div>
+            {error ? <p className="auth-alert auth-alert-error">{error}</p> : null}
 
             <div className="check-status-card">
               <h2>Your Recent Reports</h2>
@@ -132,7 +147,9 @@ const Checkstatus = () => {
                 </table>
                 {!filteredReports.length && (
                   <p className="empty-results">
-                    No reports found for "{searchQuery}".
+                    {searchQuery
+                      ? `No reports found for "${searchQuery}".`
+                      : "No complaints found for your account yet."}
                   </p>
                 )}
               </div>

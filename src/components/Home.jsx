@@ -1,13 +1,14 @@
 ﻿import Header from "./Header";
 import { NavLink, useLocation, useNavigate } from "react-router";
 import { useEffect, useRef, useState } from "react";
+import { fetchHomeStats, loginUser } from "../utils/api";
+import { saveSession } from "../utils/session";
 
 const Home = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [isopen, setisopen] = useState(false);
     const [isphone, setisphone] = useState(false);
-    const [isadmin, setisadmin] = useState(false);
     const [isvalue, setisvalue] = useState(false);
     const [isvision, setisvision] = useState(false);
     const [ismission, setismission] = useState(false);
@@ -16,7 +17,16 @@ const Home = () => {
     const [loginPassword, setloginPassword] = useState("");
     const [authNotice, setauthNotice] = useState("");
     const [loginError, setloginError] = useState("");
-    const [adminNotice, setadminNotice] = useState("");
+    const [stats, setStats] = useState({
+        totalReports: 0,
+        resolvedReports: 0,
+        activeUsers: 0,
+    });
+    const [displayStats, setDisplayStats] = useState({
+        totalReports: 0,
+        resolvedReports: 0,
+        activeUsers: 0,
+    });
     const inputrefer = useRef([]);
 
     const handleotp = (e, index) => {
@@ -40,51 +50,35 @@ const Home = () => {
         }
     };
 
-    const completeLogin = (name) => {
-        localStorage.setItem("ecoLoggedIn", "true");
-        localStorage.setItem("ecoLoggedInName", name || "User");
-        window.dispatchEvent(new Event("eco-auth-changed"));
+    const completeLogin = ({ token, user }) => {
+        saveSession({ token, user });
         setisopen(false);
         setisphone(false);
-        setisadmin(false);
         setauthNotice("");
         setloginError("");
-        setadminNotice("");
 
         if (location.state?.redirectTo) {
             navigate(location.state.redirectTo, { replace: true });
         }
     };
 
-    const handleUserLogin = (e) => {
+    const handleUserLogin = async (e) => {
         e.preventDefault();
         setloginError("");
-
-        const users = JSON.parse(localStorage.getItem("ecoUsers") || "[]");
-        const normalizedEmail = loginEmail.trim().toLowerCase();
-        const matchedUser = users.find((user) => user.email === normalizedEmail);
-
-        if (!matchedUser) {
-            setloginError("User not found. Please register first.");
-            return;
+        try {
+            const response = await loginUser({
+                email: loginEmail.trim().toLowerCase(),
+                password: loginPassword,
+            });
+            completeLogin(response);
+        } catch (error) {
+            setloginError(error.message || "Unable to login.");
         }
-
-        if (matchedUser.password !== loginPassword) {
-            setloginError("Invalid email or password.");
-            return;
-        }
-
-        completeLogin(matchedUser.name || "User");
     };
 
     const handlesubmit = (e) => {
         e.preventDefault();
         setloginError("Phone login is not enabled now. Please use registered email and password.");
-    };
-
-    const handleAdminLogin = (e) => {
-        e.preventDefault();
-        setadminNotice("Admin module is pending. Home page remains same for now.");
     };
 
     const handlephonelogin = () => {
@@ -98,10 +92,6 @@ const Home = () => {
 
     const handleclosephone = () => {
         setisphone(!isphone);
-    };
-
-    const handlecloseadmin = () => {
-        setisadmin(!isadmin);
     };
 
     const handlevalue = () => {
@@ -128,50 +118,114 @@ const Home = () => {
             setauthNotice(location.state.message || "Please login with your registered credentials.");
             setisopen(true);
             navigate("/", { replace: true, state: {} });
+            return;
+        }
+
+        if (location.state?.message) {
+            setauthNotice(location.state.message);
+            navigate("/", { replace: true, state: {} });
         }
     }, [location.state, navigate]);
+
+    useEffect(() => {
+        const loadStats = async () => {
+            try {
+                setStats(await fetchHomeStats());
+            } catch {
+                setStats({
+                    totalReports: 0,
+                    resolvedReports: 0,
+                    activeUsers: 0,
+                });
+            }
+        };
+
+        loadStats();
+        window.addEventListener("eco-reports-changed", loadStats);
+        window.addEventListener("eco-auth-changed", loadStats);
+
+        return () => {
+            window.removeEventListener("eco-reports-changed", loadStats);
+            window.removeEventListener("eco-auth-changed", loadStats);
+        };
+    }, []);
+
+    useEffect(() => {
+        const duration = 700;
+        const start = performance.now();
+        const initialStats = { ...displayStats };
+
+        let frameId;
+        const tick = (now) => {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+
+            setDisplayStats({
+                totalReports: Math.round(initialStats.totalReports + (stats.totalReports - initialStats.totalReports) * eased),
+                resolvedReports: Math.round(initialStats.resolvedReports + (stats.resolvedReports - initialStats.resolvedReports) * eased),
+                activeUsers: Math.round(initialStats.activeUsers + (stats.activeUsers - initialStats.activeUsers) * eased),
+            });
+
+            if (progress < 1) {
+                frameId = window.requestAnimationFrame(tick);
+            }
+        };
+
+        frameId = window.requestAnimationFrame(tick);
+        return () => window.cancelAnimationFrame(frameId);
+    }, [stats]);
 
     return (
         <>
             <Header
                 setisopen={setisopen}
-                isopen={isopen}
-                isadmin={isadmin}
-                setisadmin={setisadmin}
-                isphone={isphone}
-                setisphone={setisphone}
             />
-            <div className={`Home ${(isopen || isphone || isadmin) ? "blur" : ""} `} id="home">
-                <img src="public/logo-removebg-preview.png" alt="Eco-Compliance Portal Logo" />
-                <h1>Eco-Compliance Portal</h1>
-                <p>~A smart platform for campus environmental issue tracking.</p>
-                {authNotice ? <p className="auth-alert">{authNotice}</p> : null}
+            <div className={`Home ${(isopen || isphone) ? "blur" : ""} `} id="home">
+                <div className="home-shell">
+                    <section className="home-hero">
+                        <div className="home-brand">
+                            <img src="public/logo-removebg-preview.png" alt="Eco-Compliance Portal Logo" />
+                            <div className="home-copy">
+                                <h1>Eco-Compliance Portal</h1>
+                                <p>~A smart platform for campus environmental issue tracking.</p>
+                                {authNotice ? <p className="auth-alert">{authNotice}</p> : null}
+                                <div className="home-divider" />
 
-                <div className="home-btn">
-                    <span className="btn"><NavLink to="/reportissue" style={{ textDecoration: "none", color: "white" }}><b>Report an Issue</b></NavLink></span>
-                    <span className="btn"><NavLink to="/checkstatus" style={{ textDecoration: "none", color: "white" }}><b>Check Status</b></NavLink></span>
-                </div>
+                                <div className="home-btn">
+                                    <span className="btn btn-primary"><NavLink to="/reportissue" style={{ textDecoration: "none", color: "white" }}><b>Report an Issue</b></NavLink></span>
+                                    <span className="btn btn-secondary"><NavLink to="/checkstatus" style={{ textDecoration: "none", color: "#163a63" }}><b>Check Status</b></NavLink></span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
 
-                <div className="detail-box">
-                    <div className="box">
-                        <div className="box-content">
-                            <img src="public/compliant-raised.png" alt="Complaint-raised" />
-                            <h1>368</h1>
-                            <p>Complaints Raised</p>
+                    <div className="detail-box">
+                        <div className="box box-raised">
+                            <div className="box-content">
+                                <img src="public/compliant-raised.png" alt="Complaint-raised" />
+                                <div className="box-metric">
+                                    <h1>{displayStats.totalReports}</h1>
+                                    <p>Complaints Raised</p>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div className="box">
-                        <div className="box-content">
-                            <img src="public/compliantsolved.jpg" alt="complaint-resolved" />
-                            <h1>240</h1>
-                            <p>Complaints Resolved</p>
+                        <div className="box box-resolved">
+                            <div className="box-content">
+                                <img src="public/compliantsolved.jpg" alt="complaint-resolved" />
+                                <div className="box-metric">
+                                    <h1>{displayStats.resolvedReports}</h1>
+                                    <p>Complaints Resolved</p>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div className="box">
-                        <div className="box-content">
-                            <img src="public/active users.jpg" alt="Active-user" className="comp-img" />
-                            <h1>1596</h1>
-                            <p>Active Users</p>
+                        <div className="box box-users">
+                            <div className="box-content">
+                                <img src="public/active users.jpg" alt="Active-user" className="comp-img" />
+                                <div className="box-metric">
+                                    <h1>{displayStats.activeUsers}</h1>
+                                    <p>Active Users</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -206,26 +260,6 @@ const Home = () => {
                     <div className="otp-login">
                         <button onClick={handlesubmit}>Login</button>
                     </div>
-                </div>
-            </div>
-
-            <div className={`adminlogin ${isadmin ? "show" : ""}`}>
-                <button className="close-btn" onClick={handlecloseadmin}>x</button>
-                <h1>Admin Login</h1>
-                <div className="email-login-admin">
-                    <div className="email-admin">
-                        <label htmlFor="email">Email</label>
-                        <input type="text" id="email" placeholder="e.g.example@gamil.com" />
-                    </div>
-                    <div className="password-admin">
-                        <label htmlFor="pass">Password</label>
-                        <input type="password" id="pass" placeholder="Enter password" />
-                        <h5>Forget password?</h5>
-                    </div>
-                    <div className="btn-admin">
-                        <button className="login-btn-admin" onClick={handleAdminLogin}>Login</button>
-                    </div>
-                    {adminNotice ? <p className="auth-alert">{adminNotice}</p> : null}
                 </div>
             </div>
 

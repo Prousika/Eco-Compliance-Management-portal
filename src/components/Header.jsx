@@ -2,21 +2,26 @@ import { FaGlobe, FaShieldAlt, FaUserCircle } from "react-icons/fa";
 import { useEffect, useRef, useState } from "react";
 import { NavLink, useNavigate } from "react-router";
 import { HashLink } from "react-router-hash-link";
+import { clearSession, getCurrentUser, isLoggedIn } from "../utils/session";
 const Header = (props) => {
-    const { setisopen, isopen, isadmin, setisadmin, isphone, setisphone } = props
+    const { setisopen } = props
     const navigate = useNavigate()
     const [authState, setAuthState] = useState({
         isLoggedIn: false,
         name: "",
+        role: "",
     })
     const [showProfileMenu, setshowProfileMenu] = useState(false)
     const profileMenuRef = useRef(null)
 
     useEffect(() => {
         const syncAuth = () => {
-            const isLoggedIn = localStorage.getItem("ecoLoggedIn") === "true"
-            const name = localStorage.getItem("ecoLoggedInName") || localStorage.getItem("ecoLoggedInUser") || "User"
-            setAuthState({ isLoggedIn, name })
+            const user = getCurrentUser()
+            setAuthState({
+                isLoggedIn: isLoggedIn(),
+                name: user?.name || "User",
+                role: user?.role || "",
+            })
         }
 
         syncAuth()
@@ -46,21 +51,22 @@ const Header = (props) => {
         }
     }
     const openadmin = () => {
-        if (setisadmin) {
-            setisadmin(true);
+        if (authState.isLoggedIn && authState.role === "user") {
+            navigate("/admin-login", {
+                state: {
+                    message: "You are logged in as user. Logout first to continue as admin.",
+                },
+            })
+            return
         }
-        if (setisopen) {
-            setisopen(false);
+        if (authState.isLoggedIn && authState.role === "admin") {
+            navigate("/admin/dashboard")
+            return
         }
-        if (setisphone) {
-            setisphone(false);
-        }
+        navigate("/admin-login")
     }
     const handleLogout = () => {
-        localStorage.removeItem("ecoLoggedIn")
-        localStorage.removeItem("ecoLoggedInName")
-        localStorage.removeItem("ecoLoggedInUser")
-        window.dispatchEvent(new Event("eco-auth-changed"))
+        clearSession()
         setshowProfileMenu(false)
         navigate("/")
     }
@@ -94,7 +100,7 @@ const Header = (props) => {
                     ) : (
                         <span className="login" onClick={openlogin}>Login</span>
                     )}
-                    <span className="admin-login" onClick={openadmin}><FaShieldAlt />Admin login</span>
+                    <span className="admin-login" onClick={openadmin}><FaShieldAlt />Admin</span>
                 </div>
                 <div className="header-logo">
                     <img src="public/logo-removebg-preview.png" alt="Eco-Compliance Portal Logo" />

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import Header from "./Header";
+import { registerUser } from "../utils/api";
+import { clearSession } from "../utils/session";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -29,7 +31,7 @@ const Register = () => {
     setform((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleregister = (e) => {
+  const handleregister = async (e) => {
     e.preventDefault();
     seterror("");
 
@@ -53,34 +55,23 @@ const Register = () => {
       return;
     }
 
-    const users = JSON.parse(localStorage.getItem("ecoUsers") || "[]");
-    const normalizedEmail = form.email.trim().toLowerCase();
-    const alreadyExists = users.some((user) => user.email === normalizedEmail);
-
-    if (alreadyExists) {
-      seterror("This email is already registered. Please login.");
-      return;
+    try {
+      await registerUser({
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim().toLowerCase(),
+        password: form.password,
+      });
+      clearSession();
+      navigate("/", {
+        state: {
+          showLogin: true,
+          message: "Registration successful. Please login with your email and password.",
+        },
+      });
+    } catch (err) {
+      seterror(err.message || "Registration failed.");
     }
-
-    const newUser = {
-      name: form.name.trim(),
-      phone: form.phone.trim(),
-      email: normalizedEmail,
-      password: form.password,
-      isvolunteer,
-      isstudent,
-      school: form.school.trim(),
-      organization: form.organization.trim(),
-    };
-
-    localStorage.setItem("ecoUsers", JSON.stringify([...users, newUser]));
-
-    navigate("/", {
-      state: {
-        showLogin: true,
-        message: "Registration successful. Please login with your email and password.",
-      },
-    });
   };
 
   return (

@@ -2,18 +2,11 @@ import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 import { useEffect, useMemo, useState } from "react";
 import Header from "./Header";
 import { getReports } from "../utils/reportStore";
-
-const BLOCK_COORDS = {
-  "Block A": { lat: 11.2342, lng: 77.1044, zone: "North Campus Zone" },
-  "Block B": { lat: 11.2312, lng: 77.1069, zone: "Central Campus Zone" },
-  "Block C": { lat: 11.2361, lng: 77.1081, zone: "North Campus Zone" },
-  "IB Block": { lat: 11.2291, lng: 77.1062, zone: "Central Campus Zone" },
-  "Playground Area": { lat: 11.2278, lng: 77.1048, zone: "South Campus Zone" },
-  "Academic Block A": { lat: 11.2331, lng: 77.1051, zone: "Central Campus Zone" },
-  "Library Block": { lat: 11.2301, lng: 77.1027, zone: "Central Campus Zone" },
-  "Sports Complex": { lat: 11.2266, lng: 77.1092, zone: "South Campus Zone" },
-  "Hostel Block": { lat: 11.2248, lng: 77.1058, zone: "South Campus Zone" },
-};
+import {
+  BAIET_CAMPUS_CENTER,
+  BAIET_MAP_OPTIONS,
+  getCampusPoint,
+} from "../utils/campusMap";
 
 const STATUS_MARKER_ICON = {
   Pending: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
@@ -25,18 +18,24 @@ const STATUS_MARKER_ICON = {
 const pickBlock = (report) => report.block || report.location?.split("-")[0]?.trim() || "Block B";
 
 const Transparencymap = () => {
-  const center = { lat: 11.2321, lng: 77.1067 };
-  const [reports, setReports] = useState(() => getReports());
+  const [reports, setReports] = useState([]);
   const [selectedIssue, setSelectedIssue] = useState(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const syncReports = () => setReports(getReports());
+    const syncReports = async () => {
+      try {
+        setReports(await getReports());
+        setError("");
+      } catch (err) {
+        setError(err.message || "Unable to load map data.");
+      }
+    };
+
     syncReports();
     window.addEventListener("eco-reports-changed", syncReports);
-    window.addEventListener("storage", syncReports);
     return () => {
       window.removeEventListener("eco-reports-changed", syncReports);
-      window.removeEventListener("storage", syncReports);
     };
   }, []);
 
@@ -44,11 +43,10 @@ const Transparencymap = () => {
     () =>
       reports.map((report, index) => {
         const block = pickBlock(report);
-        const coords = BLOCK_COORDS[block] || {
-          lat: 11.2315 + index * 0.0006,
-          lng: 77.106 + index * 0.0005,
-          zone: "Campus Zone",
-        };
+        const coords =
+          typeof report.latitude === "number" && typeof report.longitude === "number"
+            ? { lat: report.latitude, lng: report.longitude, zone: getCampusPoint(block, index).zone }
+            : getCampusPoint(block, index);
 
         return {
           reportNumber: report.reportNumber,
@@ -81,14 +79,16 @@ const Transparencymap = () => {
         <p>
           Campus zones and block-wise eco issues with live status color coding.
         </p>
+        {error ? <p className="auth-alert auth-alert-error">{error}</p> : null}
 
         <div className="eco-map-layout">
           <div className="eco-map-wrap">
             <LoadScript googleMapsApiKey="AIzaSyAg-DiGUEFgQYZYT2zgQ1JInN7vlx7O4cY">
               <GoogleMap
                 mapContainerClassName="map-container"
-                center={center}
-                zoom={15}
+                center={BAIET_CAMPUS_CENTER}
+                zoom={16}
+                options={BAIET_MAP_OPTIONS}
                 onClick={() => setSelectedIssue(null)}
               >
                 {mappedIssues.map((item) => (

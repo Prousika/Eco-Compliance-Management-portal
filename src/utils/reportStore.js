@@ -1,10 +1,10 @@
-import { reports as seedReports } from "../data/reports";
-
-export const REPORTS_STORAGE_KEY = "ecoReports";
+import { createReport, fetchMyReports, fetchReports } from "./api";
+import { normalizeCampusBlock } from "./campusBlocks";
 
 const inferBlock = (location = "") => {
   if (!location) return "Unknown Block";
-  return location.split("-")[0].trim() || "Unknown Block";
+  const inferred = location.split("-")[0].trim() || "Unknown Block";
+  return normalizeCampusBlock(inferred);
 };
 
 const normalizeStatus = (status = "") => {
@@ -16,42 +16,46 @@ const normalizeStatus = (status = "") => {
   return "Pending";
 };
 
-const normalizeReport = (report) => ({
+export const normalizeReport = (report) => ({
   ...report,
   status: normalizeStatus(report.status),
   category: report.category || report.type || "General",
   block: report.block || inferBlock(report.location),
+  latitude: typeof report.latitude === "number" ? report.latitude : null,
+  longitude: typeof report.longitude === "number" ? report.longitude : null,
   department: report.department || report.assignedWorker || "Unassigned",
+  assignedWorker: report.assignedWorker || report.department || "Unassigned",
   ecoMember: report.ecoMember || "",
+  reporterId: report.reporterId || "",
+  reporterEmail: report.reporterEmail || "",
   contactInfo: report.contactInfo || "",
+  assigneeContact:
+    report.assigneeContact ||
+    (typeof report.contactInfo === "string" && report.contactInfo.includes("@")
+      ? ""
+      : report.contactInfo || ""),
   internalNotes: report.internalNotes || "",
   timeline: Array.isArray(report.timeline) ? report.timeline : [],
+  images: Array.isArray(report.images) && report.images.length ? report.images : [],
 });
 
-export const seedReportsIfNeeded = () => {
-  const existing = localStorage.getItem(REPORTS_STORAGE_KEY);
-  if (existing) return;
-  const normalized = seedReports.map(normalizeReport);
-  localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(normalized));
+export const getReports = async (query) => {
+  const reports = await fetchReports(query);
+  return reports.map(normalizeReport);
 };
 
-export const getReports = () => {
-  seedReportsIfNeeded();
-  const raw = localStorage.getItem(REPORTS_STORAGE_KEY);
-  if (!raw) return [];
-
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed.map(normalizeReport);
-  } catch {
-    const normalized = seedReports.map(normalizeReport);
-    localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(normalized));
-    return normalized;
-  }
+export const getMyReports = async () => {
+  const reports = await fetchMyReports();
+  return reports.map(normalizeReport);
 };
 
-export const saveReports = (reports) => {
-  localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(reports));
+export const createIssueReport = async (payload) => {
+  const report = await createReport(payload);
+  window.dispatchEvent(new Event("eco-reports-changed"));
+  return normalizeReport(report);
+};
+
+export const notifyReportsChanged = () => {
   window.dispatchEvent(new Event("eco-reports-changed"));
 };
 
@@ -74,4 +78,3 @@ export const getReportStats = (reports) => {
     complianceRate,
   };
 };
-

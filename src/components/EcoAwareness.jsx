@@ -10,16 +10,23 @@ import Header from "./Header";
 import { getReports, getReportStats } from "../utils/reportStore";
 
 const EcoAwareness = () => {
-  const [reports, setReports] = useState(() => getReports());
+  const [reports, setReports] = useState([]);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const syncReports = () => setReports(getReports());
+    const syncReports = async () => {
+      try {
+        setReports(await getReports());
+        setError("");
+      } catch (err) {
+        setError(err.message || "Unable to load awareness metrics.");
+      }
+    };
+
     syncReports();
     window.addEventListener("eco-reports-changed", syncReports);
-    window.addEventListener("storage", syncReports);
     return () => {
       window.removeEventListener("eco-reports-changed", syncReports);
-      window.removeEventListener("storage", syncReports);
     };
   }, []);
 
@@ -36,6 +43,7 @@ const EcoAwareness = () => {
             Learn practical sustainability actions for campus life beyond
             complaint reporting.
           </p>
+          {error ? <p className="auth-alert auth-alert-error">{error}</p> : null}
 
           <div className="eco-score-card">
             <h2>Campus Eco Compliance Rate: {complianceRate}%</h2>
