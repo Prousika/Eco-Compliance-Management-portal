@@ -1,4 +1,5 @@
 import Report from "../models/Report.js";
+import cloudinary, { isCloudinaryConfigured } from "../config/cloudinary.js";
 import { normalizeCampusBlock } from "../utils/campusBlocks.js";
 import { generateReportNumber } from "../utils/reportNumber.js";
 import User from "../models/User.js";
@@ -50,6 +51,49 @@ const progressFor = (status, previous = 10) => {
   if (status === "In Progress") return Math.max(previous, 45);
   if (status === "Reopened") return 20;
   return 10;
+};
+
+const uploadReportImages = async (images = []) => {
+  const uploaded = [];
+
+  for (const image of images) {
+    if (!image?.src) continue;
+
+    const src = String(image.src);
+    const normalizedImage = {
+      src,
+      name: image.name || "report-image.jpg",
+    };
+
+    if (!src.startsWith("data:image")) {
+      uploaded.push(normalizedImage);
+      continue;
+    }
+
+    if (!isCloudinaryConfigured) {
+      uploaded.push(normalizedImage);
+      continue;
+    }
+
+    try {
+      const result = await cloudinary.uploader.upload(src, {
+        folder: "eco-compliance/reports",
+        resource_type: "image",
+        timeout: 120000,
+      });
+
+      uploaded.push({
+        src: result.secure_url,
+        name: normalizedImage.name,
+      });
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.warn("Cloudinary upload skipped, using inline image instead.", error?.message || error);
+      uploaded.push(normalizedImage);
+    }
+  }
+
+  return uploaded;
 };
 
 export const getReports = async (req, res) => {
@@ -107,58 +151,69 @@ export const getMyReports = async (req, res) => {
 };
 
 export const createReport = async (req, res) => {
-  const {
-    type,
-    description,
-    block,
-    spot,
-    category,
-    images = [],
-    reporterId = "",
-    reporterEmail = "",
-    contactInfo = "",
-    assigneeContact = "",
-    ecoMember = "",
-    latitude = null,
-    longitude = null,
-  } = req.body;
-  if (!type || !description || !block) {
-    return res.status(400).json({ message: "type, description and block are required" });
+  try {
+    const {
+      type,
+      description,
+      block,
+      spot,
+      category,
+      images = [],
+      reporterId = "",
+      reporterEmail = "",
+      contactInfo = "",
+      assigneeContact = "",
+      ecoMember = "",
+      latitude = null,
+      longitude = null,
+    } = req.body;
+    if (!type || !description || !block) {
+      return res.status(400).json({ message: "type, description and block are required" });
+    }
+
+    const count = await Report.countDocuments();
+    const reportNumber = generateReportNumber(count);
+    const normalizedBlock = normalizeCampusBlock(block);
+    const location = spot ? `${normalizedBlock} - ${spot}` : `${normalizedBlock} - General Area`;
+    const reportedAt = nowISO();
+    const uploadedImages = await uploadReportImages(images);
+
+    const report = await Report.create({
+      reportNumber,
+      date: dateLabel(),
+      type,
+      category: category || type,
+      status: "Pending",
+      progress: 10,
+      tone: "pending",
+      location,
+      block: normalizedBlock,
+      latitude: typeof latitude === "number" ? latitude : null,
+      longitude: typeof longitude === "number" ? longitude : null,
+      assignedWorker: "Unassigned",
+      department: "Unassigned",
+      ecoMember,
+      reporterId,
+      reporterEmail: String(reporterEmail || contactInfo || "").trim().toLowerCase(),
+      contactInfo: String(contactInfo || "").trim(),
+      assigneeContact: String(assigneeContact || "").trim(),
+      internalNotes: "",
+      description,
+      images: uploadedImages.length
+        ? uploadedImages
+        : [{ src: "/backgroundimg.jpg", name: "no-image.jpg" }],
+      adminFlow: { reportedAt },
+      timeline: [{ date: new Date(reportedAt).toLocaleString("en-IN"), text: "Reported" }],
+    });
+
+    return res.status(201).json(report);
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("Failed to create report", error);
+    return res.status(500).json({
+      message: error?.message || "Failed to create report",
+    });
   }
-
-  const count = await Report.countDocuments();
-  const reportNumber = generateReportNumber(count);
-  const normalizedBlock = normalizeCampusBlock(block);
-  const location = spot ? `${normalizedBlock} - ${spot}` : `${normalizedBlock} - General Area`;
-  const reportedAt = nowISO();
-
-  const report = await Report.create({
-    reportNumber,
-    date: dateLabel(),
-    type,
-    category: category || type,
-    status: "Pending",
-    progress: 10,
-    tone: "pending",
-    location,
-    block: normalizedBlock,
-    latitude: typeof latitude === "number" ? latitude : null,
-    longitude: typeof longitude === "number" ? longitude : null,
-    assignedWorker: "Unassigned",
-    department: "Unassigned",
-    ecoMember,
-    reporterId,
-    reporterEmail: String(reporterEmail || contactInfo || "").trim().toLowerCase(),
-    contactInfo: String(contactInfo || "").trim(),
-    assigneeContact: String(assigneeContact || "").trim(),
-    internalNotes: "",
-    description,
-    images,
-    adminFlow: { reportedAt },
-    timeline: [{ date: new Date(reportedAt).toLocaleString("en-IN"), text: "Reported" }],
-  });
-
-  return res.status(201).json(report);
 };
 
 export const updateReportStatus = async (req, res) => {

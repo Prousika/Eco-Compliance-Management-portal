@@ -9,6 +9,7 @@ import {
     BAIET_MAP_OPTIONS,
     getBlockPoint,
 } from "../utils/campusMap";
+import { useToast } from "./ui/ToastProvider";
 
 const Reportissue = () => {
     const [isfile, setisfile] = useState(null)
@@ -17,9 +18,11 @@ const Reportissue = () => {
     const [block, setBlock] = useState(CAMPUS_BLOCKS[0]);
     const [spot, setSpot] = useState("");
     const [submitMessage, setSubmitMessage] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [selectedPoint, setSelectedPoint] = useState(() => getBlockPoint(CAMPUS_BLOCKS[0]));
     const [locationMode, setLocationMode] = useState("block");
     const [locationStatus, setLocationStatus] = useState("Trying to detect your current location...");
+    const toast = useToast();
     const handlefile = (e) => {
         const selectedffile = e.target.files[0]
         if (selectedffile) {
@@ -115,6 +118,7 @@ const Reportissue = () => {
         const currentUser = getCurrentUser();
 
         try {
+            setIsSubmitting(true);
             const report = await createIssueReport({
                 type: title.trim(),
                 category: title.trim(),
@@ -131,7 +135,9 @@ const Reportissue = () => {
                     ? [{ src: isfile, name: "uploaded-image.jpg" }]
                     : [{ src: "/backgroundimg.jpg", name: "no-image.jpg" }],
             });
-            setSubmitMessage(`Report submitted successfully. ID: ${report.reportNumber}`);
+            const message = `Report submitted successfully. ID: ${report.reportNumber}`;
+            setSubmitMessage(message);
+            toast.success(message);
             setTitle("");
             setDescription("");
             setBlock(CAMPUS_BLOCKS[0]);
@@ -139,7 +145,11 @@ const Reportissue = () => {
             setSelectedPoint(getBlockPoint(CAMPUS_BLOCKS[0]));
             setisfile(null);
         } catch (error) {
-            setSubmitMessage(error.message || "Unable to submit report.");
+            const message = error.message || "Unable to submit report.";
+            setSubmitMessage(message);
+            toast.error(message);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -193,7 +203,9 @@ const Reportissue = () => {
                             <label htmlFor="emg">Mark As Emergency</label>
                         </div>
                         <div className="sub-btn">
-                            <button type="button" onClick={handleSubmit}>Sumbit</button>
+                            <button type="button" onClick={handleSubmit} className={isSubmitting ? "btn-loading" : ""} disabled={isSubmitting}>
+                                {isSubmitting ? "Submitting..." : "Submit"}
+                            </button>
                         </div>
                     </div>
 

@@ -16,6 +16,13 @@ Required:
 - `MONGO_URI`
 - `JWT_SECRET`
 
+Optional:
+- `CLOUDINARY_CLOUD_NAME`
+- `CLOUDINARY_API_KEY`
+- `CLOUDINARY_API_SECRET`
+
+If Cloudinary keys are not configured, report submission still works and images are stored inline instead of being uploaded to Cloudinary.
+
 ## 3. Run
 ```bash
 npm run dev

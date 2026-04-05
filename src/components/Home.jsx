@@ -1,8 +1,9 @@
 ﻿import Header from "./Header";
 import { NavLink, useLocation, useNavigate } from "react-router";
 import { useEffect, useRef, useState } from "react";
-import { fetchHomeStats, loginUser } from "../utils/api";
+import { fetchHomeStats, loginUser, requestPhoneOtp, verifyPhoneOtp } from "../utils/api";
 import { saveSession } from "../utils/session";
+import { useToast } from "./ui/ToastProvider";
 
 const Home = () => {
     const navigate = useNavigate();
@@ -13,6 +14,9 @@ const Home = () => {
     const [isvision, setisvision] = useState(false);
     const [ismission, setismission] = useState(false);
     const [otp, setotp] = useState(["", "", "", "", "", ""]);
+    const [phoneNumber, setPhoneNumber] = useState("");
+    const [phoneLoginError, setPhoneLoginError] = useState("");
+    const [otpHint, setOtpHint] = useState("");
     const [loginEmail, setloginEmail] = useState("");
     const [loginPassword, setloginPassword] = useState("");
     const [authNotice, setauthNotice] = useState("");
@@ -27,7 +31,11 @@ const Home = () => {
         resolvedReports: 0,
         activeUsers: 0,
     });
+    const [isLoggingIn, setIsLoggingIn] = useState(false);
+    const [isSendingOtp, setIsSendingOtp] = useState(false);
+    const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
     const inputrefer = useRef([]);
+    const toast = useToast();
 
     const handleotp = (e, index) => {
         const otps = e.target.value;
@@ -56,6 +64,10 @@ const Home = () => {
         setisphone(false);
         setauthNotice("");
         setloginError("");
+        setPhoneLoginError("");
+        setPhoneNumber("");
+        setotp(["", "", "", "", "", ""]);
+        setOtpHint("");
 
         if (location.state?.redirectTo) {
             navigate(location.state.redirectTo, { replace: true });
@@ -65,25 +77,61 @@ const Home = () => {
     const handleUserLogin = async (e) => {
         e.preventDefault();
         setloginError("");
+        setIsLoggingIn(true);
         try {
             const response = await loginUser({
                 email: loginEmail.trim().toLowerCase(),
                 password: loginPassword,
             });
+            toast.success("Login successful.");
             completeLogin(response);
         } catch (error) {
-            setloginError(error.message || "Unable to login.");
+            const message = error.message || "Unable to login.";
+            setloginError(message);
+            toast.error(message);
+        } finally {
+            setIsLoggingIn(false);
         }
     };
 
     const handlesubmit = (e) => {
         e.preventDefault();
-        setloginError("Phone login is not enabled now. Please use registered email and password.");
+        const verify = async () => {
+            const enteredOtp = otp.join("").trim();
+            if (!phoneNumber.trim()) {
+                setPhoneLoginError("Enter your registered phone number.");
+                return;
+            }
+            if (enteredOtp.length !== 6) {
+                setPhoneLoginError("Enter the 6-digit OTP.");
+                return;
+            }
+
+            try {
+                setIsVerifyingOtp(true);
+                setPhoneLoginError("");
+                const response = await verifyPhoneOtp({
+                    phone: phoneNumber,
+                    otp: enteredOtp,
+                });
+                toast.success("Phone login successful.");
+                completeLogin(response);
+            } catch (error) {
+                const message = error.message || "Unable to verify OTP.";
+                setPhoneLoginError(message);
+                toast.error(message);
+            } finally {
+                setIsVerifyingOtp(false);
+            }
+        };
+
+        verify();
     };
 
     const handlephonelogin = () => {
         setisphone(true);
         setisopen(false);
+        setPhoneLoginError("");
     };
 
     const handleclose = () => {
@@ -92,6 +140,28 @@ const Home = () => {
 
     const handleclosephone = () => {
         setisphone(!isphone);
+    };
+
+    const handleSendOtp = async () => {
+        if (!phoneNumber.trim()) {
+            setPhoneLoginError("Enter your registered phone number.");
+            return;
+        }
+
+        try {
+            setIsSendingOtp(true);
+            setPhoneLoginError("");
+            const response = await requestPhoneOtp({ phone: phoneNumber });
+            setOtpHint(response.otp ? `Demo OTP: ${response.otp}` : "OTP sent to your phone.");
+            toast.success(response.message || "OTP sent successfully.");
+            inputrefer.current[0]?.focus();
+        } catch (error) {
+            const message = error.message || "Unable to send OTP.";
+            setPhoneLoginError(message);
+            toast.error(message);
+        } finally {
+            setIsSendingOtp(false);
+        }
     };
 
     const handlevalue = () => {
@@ -237,8 +307,10 @@ const Home = () => {
                     <h1>Login</h1>
                     <div className="phonenumber">
                         <label>Phone Number</label>
-                        <input type="number" placeholder="Phone Number" />
-                        <button>Send Otp</button>
+                        <input type="tel" placeholder="Phone Number" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} />
+                        <button type="button" className={isSendingOtp ? "btn-loading" : ""} onClick={handleSendOtp} disabled={isSendingOtp}>
+                            {isSendingOtp ? "Sending..." : "Send OTP"}
+                        </button>
                     </div>
 
                     <div className="otp">
@@ -254,11 +326,17 @@ const Home = () => {
                             />
                         ))}
                     </div>
+                    {otpHint ? <p className="auth-alert">{otpHint}</p> : null}
+                    {phoneLoginError ? <p className="auth-alert auth-alert-error">{phoneLoginError}</p> : null}
                     <div className="resend-otp">
-                        <button>Resend OTP</button>
+                        <button type="button" className={isSendingOtp ? "btn-loading" : ""} onClick={handleSendOtp} disabled={isSendingOtp}>
+                            {isSendingOtp ? "Sending..." : "Resend OTP"}
+                        </button>
                     </div>
                     <div className="otp-login">
-                        <button onClick={handlesubmit}>Login</button>
+                        <button onClick={handlesubmit} className={isVerifyingOtp ? "btn-loading" : ""} disabled={isVerifyingOtp}>
+                            {isVerifyingOtp ? "Verifying..." : "Login"}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -288,7 +366,9 @@ const Home = () => {
                             <h5>Forget password?</h5>
                         </div>
                         <div className="btn">
-                            <button className="login-btn" type="submit">Login</button>
+                            <button className={`login-btn ${isLoggingIn ? "btn-loading" : ""}`} type="submit" disabled={isLoggingIn}>
+                                {isLoggingIn ? "Logging in..." : "Login"}
+                            </button>
                         </div>
                         {loginError ? <p className="auth-alert auth-alert-error">{loginError}</p> : null}
                         <h3>or</h3>

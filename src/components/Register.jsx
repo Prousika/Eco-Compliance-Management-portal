@@ -3,12 +3,14 @@ import { useNavigate } from "react-router";
 import Header from "./Header";
 import { registerUser } from "../utils/api";
 import { clearSession } from "../utils/session";
+import { useToast } from "./ui/ToastProvider";
 
 const Register = () => {
   const navigate = useNavigate();
   const [isvolunteer, setisvolunteer] = useState(false);
   const [isstudent, setisstudent] = useState("");
   const [error, seterror] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setform] = useState({
     name: "",
     phone: "",
@@ -17,6 +19,7 @@ const Register = () => {
     school: "",
     organization: "",
   });
+  const toast = useToast();
 
   const handlevolunteer = () => {
     setisvolunteer(!isvolunteer);
@@ -56,6 +59,7 @@ const Register = () => {
     }
 
     try {
+      setIsSubmitting(true);
       await registerUser({
         name: form.name.trim(),
         phone: form.phone.trim(),
@@ -63,6 +67,7 @@ const Register = () => {
         password: form.password,
       });
       clearSession();
+      toast.success("Registration successful. Please login to continue.");
       navigate("/", {
         state: {
           showLogin: true,
@@ -70,7 +75,11 @@ const Register = () => {
         },
       });
     } catch (err) {
-      seterror(err.message || "Registration failed.");
+      const message = err.message || "Registration failed.";
+      seterror(message);
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -151,7 +160,9 @@ const Register = () => {
           ""
         )}
         <div className="reg-btn">
-          <button type="submit">Register</button>
+          <button type="submit" className={isSubmitting ? "btn-loading" : ""} disabled={isSubmitting}>
+            {isSubmitting ? "Registering..." : "Register"}
+          </button>
         </div>
       </form>
     </>

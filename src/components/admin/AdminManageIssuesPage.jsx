@@ -10,6 +10,8 @@ import {
 } from "./adminUtils";
 import { CAMPUS_BLOCKS, normalizeCampusBlock } from "../../utils/campusBlocks";
 
+const PAGE_SIZE = 6;
+
 const AdminManageIssuesPage = () => {
   const [reports, setReports] = useState([]);
   const [statusFilter, setStatusFilter] = useState("All");
@@ -19,6 +21,7 @@ const AdminManageIssuesPage = () => {
   const [selectedId, setSelectedId] = useState("");
   const [noteInput, setNoteInput] = useState("");
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const sync = async () => {
@@ -53,6 +56,14 @@ const AdminManageIssuesPage = () => {
       String(report.type).toLowerCase().includes(q);
     return statusOk && categoryOk && blockOk && searchOk;
   });
+
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, categoryFilter, blockFilter, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedReports = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const selected = filtered.find((item) => item.reportNumber === selectedId) || null;
 
@@ -130,7 +141,7 @@ const AdminManageIssuesPage = () => {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((report) => (
+            {paginatedReports.map((report) => (
               <tr key={report.reportNumber}>
                 <td>{report.reportNumber}</td>
                 <td>{report.type}</td>
@@ -181,6 +192,26 @@ const AdminManageIssuesPage = () => {
             ))}
           </tbody>
         </table>
+
+        <div className="pagination-row-v2">
+          <p>
+            Showing {(filtered.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0)}-
+            {Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length} reports
+          </p>
+          <div className="pagination-actions-v2">
+            <button type="button" onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1}>
+              Previous
+            </button>
+            <span>Page {currentPage} / {totalPages}</span>
+            <button
+              type="button"
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
 
       {selected ? (

@@ -59,6 +59,18 @@ export const loginAdmin = (payload) =>
     body: JSON.stringify(payload),
   });
 
+export const requestPhoneOtp = (payload) =>
+  request("/auth/phone/request-otp", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+export const verifyPhoneOtp = (payload) =>
+  request("/auth/phone/verify-otp", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
 export const fetchReports = (query) =>
   request("/reports", {
     query,

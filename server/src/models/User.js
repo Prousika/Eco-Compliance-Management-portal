@@ -9,6 +9,8 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ["user", "admin"], default: "user" },
     disabled: { type: Boolean, default: false },
     volunteer: { type: Boolean, default: false },
+    phoneOtpCode: { type: String, default: "", select: false },
+    phoneOtpExpiresAt: { type: Date, default: null, select: false },
   },
   { timestamps: true }
 );

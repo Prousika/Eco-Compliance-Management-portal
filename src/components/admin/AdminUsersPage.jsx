@@ -5,9 +5,12 @@ import {
   toggleUserVolunteer,
 } from "./adminUtils";
 
+const PAGE_SIZE = 5;
+
 const AdminUsersPage = () => {
   const [users, setUsers] = useState([]);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const sync = async () => {
@@ -24,6 +27,10 @@ const AdminUsersPage = () => {
       window.removeEventListener("eco-reports-changed", sync);
     };
   }, []);
+
+  const totalPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paginatedUsers = users.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <section className="admin-content-v2">
@@ -46,7 +53,7 @@ const AdminUsersPage = () => {
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
+            {paginatedUsers.map((user) => (
               <tr key={user.email}>
                 <td>{user.name || "User"}</td>
                 <td>{user.email}</td>
@@ -88,6 +95,26 @@ const AdminUsersPage = () => {
             ))}
           </tbody>
         </table>
+
+        <div className="pagination-row-v2">
+          <p>
+            Showing {(users.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0)}-
+            {Math.min(currentPage * PAGE_SIZE, users.length)} of {users.length} users
+          </p>
+          <div className="pagination-actions-v2">
+            <button type="button" onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={currentPage === 1}>
+              Previous
+            </button>
+            <span>Page {currentPage} / {totalPages}</span>
+            <button
+              type="button"
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </button>
+          </div>
+        </div>
       </div>
     </section>
   );

@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from "react-router";
 import { DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD } from "./admin/adminUtils";
 import { loginAdmin } from "../utils/api";
 import { saveSession } from "../utils/session";
+import { useToast } from "./ui/ToastProvider";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -10,21 +11,29 @@ const AdminLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const toast = useToast();
 
   const notice = useMemo(() => location.state?.message || "", [location.state]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setIsSubmitting(true);
     try {
       const response = await loginAdmin({
         email: email.trim().toLowerCase(),
         password,
       });
       saveSession(response);
+      toast.success("Admin login successful.");
       navigate("/admin/dashboard", { replace: true });
     } catch (err) {
-      setError(err.message || "Invalid admin credentials.");
+      const message = err.message || "Invalid admin credentials.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -51,7 +60,9 @@ const AdminLogin = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <button type="submit">Login as Admin</button>
+          <button type="submit" className={isSubmitting ? "btn-loading" : ""} disabled={isSubmitting}>
+            {isSubmitting ? "Signing in..." : "Login as Admin"}
+          </button>
         </form>
         {error ? <p className="auth-alert auth-alert-error">{error}</p> : null}
         <p className="admin-login-help">
