@@ -1,6 +1,15 @@
 import { getAuthToken } from "./session";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const DEFAULT_API_ORIGIN = "https://eco-compliance-management-portal-backend-fml7.onrender.com";
+
+const normalizeApiBaseUrl = (baseUrl) => {
+  const normalizedBaseUrl = (baseUrl || DEFAULT_API_ORIGIN).replace(/\/+$/, "");
+  return normalizedBaseUrl.endsWith("/api")
+    ? normalizedBaseUrl
+    : `${normalizedBaseUrl}/api`;
+};
+
+const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_URL);
 
 const buildUrl = (path, query) => {
   const url = new URL(`${API_BASE_URL}${path}`);

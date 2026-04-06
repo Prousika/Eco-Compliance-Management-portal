@@ -73,15 +73,13 @@ npm install
 
 ## Setup
 
-No environment variables are required for the current frontend build.
-
-If you later add API keys or backend URLs, create a `.env` file in the project root and expose variables with the `VITE_` prefix.
-
-Example:
+The frontend uses this backend URL by default:
 
 ```env
-VITE_API_BASE_URL=http://localhost:5000
+VITE_API_URL=https://eco-compliance-management-portal-backend-fml7.onrender.com/api
 ```
+
+If needed, create a `.env` file in the project root and expose variables with the `VITE_` prefix.
 
 ## Run Locally
 
