@@ -103,7 +103,7 @@ const Header = (props) => {
                     <span className="admin-login" onClick={openadmin}><FaShieldAlt />Admin</span>
                 </div>
                 <div className="header-logo">
-                    <img src="public/logo-removebg-preview.png" alt="Eco-Compliance Portal Logo" />
+                    <img src="/logo-removebg-preview.png" alt="Eco-Compliance Portal Logo" />
                     <h3>Eco-Compliance Portal</h3>
                 </div>
             </div>

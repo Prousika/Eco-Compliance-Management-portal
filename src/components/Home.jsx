@@ -254,7 +254,7 @@ const Home = () => {
                 <div className="home-shell">
                     <section className="home-hero">
                         <div className="home-brand">
-                            <img src="public/logo-removebg-preview.png" alt="Eco-Compliance Portal Logo" />
+                            <img src="/logo-removebg-preview.png" alt="Eco-Compliance Portal Logo" />
                             <div className="home-copy">
                                 <h1>Eco-Compliance Portal</h1>
                                 <p>~A smart platform for campus environmental issue tracking.</p>
@@ -272,7 +272,7 @@ const Home = () => {
                     <div className="detail-box">
                         <div className="box box-raised">
                             <div className="box-content">
-                                <img src="public/compliant-raised.png" alt="Complaint-raised" />
+                                <img src="/compliant-raised.png" alt="Complaint-raised" />
                                 <div className="box-metric">
                                     <h1>{displayStats.totalReports}</h1>
                                     <p>Complaints Raised</p>
@@ -281,7 +281,7 @@ const Home = () => {
                         </div>
                         <div className="box box-resolved">
                             <div className="box-content">
-                                <img src="public/compliantsolved.jpg" alt="complaint-resolved" />
+                                <img src="/compliantsolved.jpg" alt="complaint-resolved" />
                                 <div className="box-metric">
                                     <h1>{displayStats.resolvedReports}</h1>
                                     <p>Complaints Resolved</p>
@@ -290,7 +290,7 @@ const Home = () => {
                         </div>
                         <div className="box box-users">
                             <div className="box-content">
-                                <img src="public/active users.jpg" alt="Active-user" className="comp-img" />
+                                <img src="/active users.jpg" alt="Active-user" className="comp-img" />
                                 <div className="box-metric">
                                     <h1>{displayStats.activeUsers}</h1>
                                     <p>Active Users</p>
@@ -432,9 +432,9 @@ const Home = () => {
                             ) : ("")}
                         </div>
                         <div className="scrollof-abtimg">
-                            {isvalue ? (<img src="public/aboutvalue-img.png" alt="aboutvalue-img" />) : ("")}
-                            {ismission ? (<img src="public/aboutmission-img.png" alt="aboutmission-img" />) : ("")}
-                            {isvision ? (<img src="public/aboutvision-img.png" alt="aboutvision-img" className="vision-img" />) : ("")}
+                            {isvalue ? (<img src="/aboutvalue-img.png" alt="aboutvalue-img" />) : ("")}
+                            {ismission ? (<img src="/aboutmission-img.png" alt="aboutmission-img" />) : ("")}
+                            {isvision ? (<img src="/aboutvision-img.png" alt="aboutvision-img" className="vision-img" />) : ("")}
                         </div>
                     </div>
                 </div>
