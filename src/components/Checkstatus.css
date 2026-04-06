@@ -188,14 +188,6 @@
   border-radius: inherit;
 }
 
-.check-status-table tr:nth-child(2) .row-progress span {
-  background: #adb4be;
-}
-
-.check-status-table tr:nth-child(3) .row-progress span {
-  background: #3f9b86;
-}
-
 .view-cell {
   display: flex;
   align-items: center;

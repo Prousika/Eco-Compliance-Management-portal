@@ -16,28 +16,45 @@ const normalizeStatus = (status = "") => {
   return "Pending";
 };
 
-export const normalizeReport = (report) => ({
-  ...report,
-  status: normalizeStatus(report.status),
-  category: report.category || report.type || "General",
-  block: report.block || inferBlock(report.location),
-  latitude: typeof report.latitude === "number" ? report.latitude : null,
-  longitude: typeof report.longitude === "number" ? report.longitude : null,
-  department: report.department || report.assignedWorker || "Unassigned",
-  assignedWorker: report.assignedWorker || report.department || "Unassigned",
-  ecoMember: report.ecoMember || "",
-  reporterId: report.reporterId || "",
-  reporterEmail: report.reporterEmail || "",
-  contactInfo: report.contactInfo || "",
-  assigneeContact:
-    report.assigneeContact ||
-    (typeof report.contactInfo === "string" && report.contactInfo.includes("@")
-      ? ""
-      : report.contactInfo || ""),
-  internalNotes: report.internalNotes || "",
-  timeline: Array.isArray(report.timeline) ? report.timeline : [],
-  images: Array.isArray(report.images) && report.images.length ? report.images : [],
-});
+const normalizeProgress = (status, progress) => {
+  const value = Number.isFinite(progress) ? progress : Number(progress);
+
+  if (status === "Resolved") return 100;
+  if (status === "In Progress") {
+    const safeValue = Number.isFinite(value) ? value : 45;
+    return Math.min(Math.max(safeValue, 45), 90);
+  }
+  if (status === "Reopened") return 20;
+  return 10;
+};
+
+export const normalizeReport = (report) => {
+  const status = normalizeStatus(report.status);
+
+  return {
+    ...report,
+    status,
+    progress: normalizeProgress(status, report.progress),
+    category: report.category || report.type || "General",
+    block: report.block || inferBlock(report.location),
+    latitude: typeof report.latitude === "number" ? report.latitude : null,
+    longitude: typeof report.longitude === "number" ? report.longitude : null,
+    department: report.department || report.assignedWorker || "Unassigned",
+    assignedWorker: report.assignedWorker || report.department || "Unassigned",
+    ecoMember: report.ecoMember || "",
+    reporterId: report.reporterId || "",
+    reporterEmail: report.reporterEmail || "",
+    contactInfo: report.contactInfo || "",
+    assigneeContact:
+      report.assigneeContact ||
+      (typeof report.contactInfo === "string" && report.contactInfo.includes("@")
+        ? ""
+        : report.contactInfo || ""),
+    internalNotes: report.internalNotes || "",
+    timeline: Array.isArray(report.timeline) ? report.timeline : [],
+    images: Array.isArray(report.images) && report.images.length ? report.images : [],
+  };
+};
 
 export const getReports = async (query) => {
   const reports = await fetchReports(query);

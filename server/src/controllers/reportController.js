@@ -48,7 +48,10 @@ const toneFor = (status) =>
 
 const progressFor = (status, previous = 10) => {
   if (status === "Resolved") return 100;
-  if (status === "In Progress") return Math.max(previous, 45);
+  if (status === "In Progress") {
+    const safePrevious = Number.isFinite(previous) ? previous : 10;
+    return Math.min(Math.max(safePrevious, 45), 90);
+  }
   if (status === "Reopened") return 20;
   return 10;
 };
